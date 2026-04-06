@@ -265,6 +265,14 @@ def conductor():
     trip_active = session.get('trip_active', False)
     trip_summary = None
 
+    # Default form values (PREVENTS CRASH)
+    form = {
+        "students": 0,
+        "pwd": 0,
+        "senior": 0,
+        "regular": 0
+    }
+
     if request.method == 'POST':
         action = request.form.get('action')
 
@@ -274,6 +282,7 @@ def conductor():
                 VALUES (%s, 'active')
             """, (session['user_id'],))
             conn.commit()
+
             session['trip_id'] = cursor.lastrowid
             session['trip_active'] = True
             trip_active = True
@@ -283,9 +292,18 @@ def conductor():
             pwd = int(request.form.get('pwd', 0))
             senior = int(request.form.get('senior', 0))
             regular = int(request.form.get('regular', 0))
+
             total = students + pwd + senior + regular
             discount_total = students + pwd + senior
             hour_now = datetime.now().hour
+
+            # Save form values (so inputs don’t reset if needed)
+            form = {
+                "students": students,
+                "pwd": pwd,
+                "senior": senior,
+                "regular": regular
+            }
 
             cursor.execute("""
                 INSERT INTO trip_records 
@@ -300,16 +318,21 @@ def conductor():
             """, (total, session['trip_id']))
 
             conn.commit()
+
             session['trip_active'] = False
             trip_active = False
+
+            # FIXED: includes discount_total
             trip_summary = {
                 "students": students,
                 "pwd": pwd,
                 "senior": senior,
                 "regular": regular,
-                "total": total
+                "total": total,
+                "discount_total": discount_total
             }
 
+    # DAILY SUMMARY (SAFE VALUES)
     cursor.execute("""
         SELECT 
             SUM(students) as students,
@@ -322,6 +345,13 @@ def conductor():
     """)
     summary = cursor.fetchone()
 
+    if summary:
+        summary['students'] = summary['students'] or 0
+        summary['pwd'] = summary['pwd'] or 0
+        summary['senior'] = summary['senior'] or 0
+        summary['regular'] = summary['regular'] or 0
+        summary['total'] = summary['total'] or 0
+
     cursor.close()
     conn.close()
 
@@ -329,9 +359,9 @@ def conductor():
         'conductor.html',
         summary=summary,
         trip_summary=trip_summary,
-        trip_active=trip_active
+        trip_active=trip_active,
+        form=form  
     )
-
 # ---------------- LOGOUT ----------------
 @app.route('/logout')
 def logout():
