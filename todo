@@ -5,4 +5,50 @@ Todo:
 [] conductor side, ayusin pa, passenger pa lng, pero baka pede din iba, di lng sa cam
 [] forgot password
 [] sa driver, kulang pa, pedeng dropdown tapos select ng bus
-    - gawa ng database para sa bus
+
+3 weeks left:
+
+possbile def: 
+- last week of the sem, april 27-may 1
+- whole day presentation
+- proper unif
+- 8- 5pm
+- panels 3-4
+- prepare ppt
+  - 3 copies of flowchart
+  - notes
+  - function
+  - benifits
+  - mga ginamit na iot
+  - 
+- 2 systems of grading
+  - individual
+  - group
+- DAPAT WORKING SYSTEM, NO DEBUGGING
+
+thurs may 8 fri
+(*patapos na)
+timeline
+week1(this week):
+- maayos ung system
+  -database*
+  - frontend ui
+  - gawing dynamic na ung mga data na hardcoded
+  - documentation dapat ayus na
+  - conductor side dapat ayos na
+  - forgot password dapat gawa na
+  - start ng code for the live feed gps
+- makausap ang gajoda
+
+week2:
+- refinement
+  - qa
+  - check for bugs
+  - review
+  - finalization ng mga started na code
+- gawa ng draft ng ppt
+
+week3:
+- working na dapat lahat
+- ayus na ppt
+- review ng code
