@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>Driver Dashboard</h1>
+                    <div class="header-info">
+                        <p><span>Driver:</span> Juan Dela Cruz</p>
+                        <p><span>Bus:</span> MB-2024</p>
+                        <p><span>Route:</span> Cabiao – Cabanatuan</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="current-time" id="currentTime">00:00:00</div>
+                    <div class="status-indicator">
+                        <div class="status-dot" id="statusDot"></div>
+                        <span class="status-text" id="statusText">Offline</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Action Buttons -->
+        <div class="action-buttons">
+            <button class="trip-button start" id="startTripBtn">
+                <div class="trip-button-icon">▶️</div>
+                <span>Start Trip</span>
+            </button>
+            <button class="trip-button end" id="endTripBtn" disabled>
+                <div class="trip-button-icon">⏹️</div>
+                <span>End Trip</span>
+            </button>
+        </div>
+
+        <!-- Map Section -->
+        <div class="map-section">
+            <div id="map"></div>
+        </div>
+
+        <!-- Dashboard Cards -->
+        <div class="cards-grid">
+            <div class="dashboard-card">
+                <div class="card-icon">
+                    <svg class="icon-lg" viewBox="0 0 24 24">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+                <div class="card-content">
+                    <div class="card-title">Passenger Count</div>
+                    <div class="card-value" id="passengerCount">0</div>
+                    <div class="card-subtitle" id="passengerSubtitle">No active trip</div>
+                </div>
+            </div>
+
+            <div class="dashboard-card" id="occupancyCard">
+                <div class="card-icon">
+                    <svg class="icon-lg" viewBox="0 0 24 24">
+                        <path d="M6 9a6 6 0 1 0 12 0A6 6 0 0 0 6 9z"></path>
+                        <path d="M12 1v6m0 6v4"></path>
+                        <path d="M4.22 4.22l4.24 4.24m6.08 0l4.24-4.24"></path>
+                    </svg>
+                </div>
+                <div class="card-content">
+                    <div class="card-title">Occupancy Level</div>
+                    <div class="card-value" id="occupancyLevel">0%</div>
+                    <div class="card-subtitle" id="occupancySubtitle">0 / 40 capacity</div>
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                <div class="card-icon">
+                    <svg class="icon-lg" viewBox="0 0 24 24">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                </div>
+                <div class="card-content">
+                    <div class="card-title">Next Stop</div>
+                    <div class="card-value" id="nextStop">—</div>
+                    <div class="card-subtitle" id="nextStopSubtitle">Start trip first</div>
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                <div class="card-icon">
+                    <svg class="icon-lg" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </div>
+                <div class="card-content">
+                    <div class="card-title">Trip Duration</div>
+                    <div class="card-value" id="tripDuration">00:00:00</div>
+                    <div class="card-subtitle" id="tripDurationSubtitle">Not started</div>
+                </div>
+            </div>
+
+            <div class="dashboard-card" id="cameraCard">
+                <div class="card-icon">
+                    <svg class="icon-lg" viewBox="0 0 24 24">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                </div>
+                <div class="card-content">
+                    <div class="card-title">Camera Status</div>
+                    <div class="card-value" id="cameraStatus">Standby</div>
+                    <div class="card-subtitle" id="cameraSubtitle">Waiting for trip</div>
+                </div>
+            </div>
+
+            <div class="speed-card">
+                <div class="speed-card-label">Speed</div>
+                <div class="speed-card-value" id="speedValue">0</div>
+                <div class="speed-card-unit">km/h</div>
+            </div>
+        </div>
+
+        <!-- Logout Button -->
+        <a href="{{ url_for('logout') }}" class="logout-button" id="logoutBtn"><svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg><span>Logout</span></a>
+    </div>
+
+    <!-- End Trip Confirmation Modal -->
+    <div class="modal" id="endTripModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">End Trip</h2>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-message">Are you sure you want to end the current trip?</p>
+                <div class="modal-actions">
+                    <button class="modal-button cancel" id="modalCancel">Cancel</button>
+                    <button class="modal-button confirm" id="modalConfirm">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Application State
+        const state = {
+            tripStatus: 'inactive', // 'inactive' or 'active'
+            currentTime: new Date(),
+            passengerCount: 0,
+            tripDuration: '00:00:00',
+            tripStartTime: null,
+            occupancyLevel: 0,
+            showEndTripModal: false,
+            mapInitialized: false,
+            busPosition: [15.2500, 120.8500],
+            routeIndex: 0
+        };
+
+        // Route coordinates
+        const routePath = [
+            [15.2500, 120.8500], // Cabiao
+            [15.2650, 120.8700],
+            [15.2800, 120.8900],
+            [15.3000, 120.9100],
+            [15.3200, 120.9300],
+            [15.3400, 120.9500],
+            [15.3600, 120.9700],
+            [15.4890, 120.9722]  // Cabanatuan
+        ];
+
+        // Map references
+        let mapInstance = null;
+        let busMarker = null;
+
+        // Format time helper
+        function formatTime(date) {
+            return date.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+        }
+
+        // Format duration helper
+        function formatDuration(ms) {
+            const hours = Math.floor(ms / (1000 * 60 * 60));
+            const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((ms % (1000 * 60)) / 1000);
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        // Update UI functions
+        function updateCurrentTime() {
+            state.currentTime = new Date();
+            document.getElementById('currentTime').textContent = formatTime(state.currentTime);
+        }
+
+        function updateStatus() {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+
+            if (state.tripStatus === 'active') {
+                statusDot.classList.add('active');
+                statusText.classList.add('active');
+                statusText.textContent = 'Online';
+            } else {
+                statusDot.classList.remove('active');
+                statusText.classList.remove('active');
+                statusText.textContent = 'Offline';
+            }
+        }
+
+        function updateTripDuration() {
+            if (state.tripStatus === 'active' && state.tripStartTime) {
+                const now = new Date();
+                const diff = now.getTime() - state.tripStartTime.getTime();
+                state.tripDuration = formatDuration(diff);
+            }
+            document.getElementById('tripDuration').textContent = state.tripDuration;
+        }
+
+        function updatePassengerCount() {
+            document.getElementById('passengerCount').textContent = state.passengerCount;
+            const subtitle = state.tripStatus === 'active' ? 'Current passengers' : 'No active trip';
+            document.getElementById('passengerSubtitle').textContent = subtitle;
+        }
+
+        function updateOccupancy() {
+            state.occupancyLevel = Math.round((state.passengerCount / 40) * 100);
+            document.getElementById('occupancyLevel').textContent = `${state.occupancyLevel}%`;
+            document.getElementById('occupancySubtitle').textContent = `${state.passengerCount} / 40 capacity`;
+
+            // Update card variant
+            const card = document.getElementById('occupancyCard');
+            card.className = 'dashboard-card';
+            if (state.occupancyLevel > 90) {
+                card.classList.add('warning');
+            } else if (state.occupancyLevel > 75) {
+                card.classList.add('success');
+            }
+        }
+
+        function updateTripCards() {
+            if (state.tripStatus === 'active') {
+                document.getElementById('nextStop').textContent = 'San Isidro';
+                document.getElementById('nextStopSubtitle').textContent = '2.5 km away';
+                document.getElementById('tripDurationSubtitle').textContent = 'Elapsed time';
+                document.getElementById('speedValue').textContent = '45';
+                document.getElementById('cameraStatus').textContent = 'Active';
+                document.getElementById('cameraSubtitle').textContent = 'Recording passengers';
+                document.getElementById('cameraCard').className = 'dashboard-card success';
+            } else {
+                document.getElementById('nextStop').textContent = '—';
+                document.getElementById('nextStopSubtitle').textContent = 'Start trip first';
+                document.getElementById('tripDurationSubtitle').textContent = 'Not started';
+                document.getElementById('speedValue').textContent = '0';
+                document.getElementById('cameraStatus').textContent = 'Standby';
+                document.getElementById('cameraSubtitle').textContent = 'Waiting for trip';
+                document.getElementById('cameraCard').className = 'dashboard-card';
+            }
+        }
+
+        function updateButtons() {
+            document.getElementById('startTripBtn').disabled = state.tripStatus === 'active';
+            document.getElementById('endTripBtn').disabled = state.tripStatus === 'inactive';
+        }
+
+        // Trip management functions
+        function handleStartTrip() {
+            state.tripStatus = 'active';
+            state.tripStartTime = new Date();
+            state.passengerCount = 0;
+            state.routeIndex = 0;
+
+            updateStatus();
+            updateTripDuration();
+            updatePassengerCount();
+            updateOccupancy();
+            updateTripCards();
+            updateButtons();
+
+            // Start simulating passenger count changes
+            startPassengerSimulation();
+            // Start moving bus on map
+            startBusMovement();
+        }
+
+        function handleEndTripClick() {
+            state.showEndTripModal = true;
+            document.getElementById('endTripModal').classList.add('open');
+        }
+
+// ---------------- START/END TRIP BACKEND ----------------
+function handleStartTrip() {
+    // Call backend to create a new trip
+    fetch('/start_trip', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Trip started in DB with ID:', data.trip_id);
+
+                // Keep existing frontend logic
+                state.tripStatus = 'active';
+                state.tripStartTime = new Date();
+                state.passengerCount = 0;
+                state.routeIndex = 0;
+
+                updateStatus();
+                updateTripDuration();
+                updatePassengerCount();
+                updateOccupancy();
+                updateTripCards();
+                updateButtons();
+
+                startPassengerSimulation();
+                startBusMovement();
+            } else {
+                alert('Failed to start trip: ' + data.error);
+            }
+        })
+        .catch(err => {
+            console.error('Error starting trip:', err);
+            alert('Could not start trip. Check server connection.');
+        });
+        }
+
+        function handleEndTripConfirm() {
+            state.tripStatus = 'inactive';
+            state.showEndTripModal = false;
+
+            const tripDuration = state.tripDuration; // HH:MM:SS
+
+            // Close modal
+            document.getElementById('endTripModal').classList.remove('open');
+
+            // Send trip_duration to backend
+            fetch('/end_trip', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ trip_duration: tripDuration })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Trip saved to DB successfully');
+                } else {
+                    console.error('Failed to save trip:', data.error);
+                }
+            })
+            .catch(err => {
+                console.error('Error ending trip:', err);
+                alert('Could not end trip. Check server connection.');
+            });
+
+            // Reset frontend state
+            state.tripStartTime = null;
+            state.tripDuration = '00:00:00';
+            state.passengerCount = 0;
+
+            updateStatus();
+            updateTripDuration();
+            updatePassengerCount();
+            updateOccupancy();
+            updateTripCards();
+            updateButtons();
+
+            stopPassengerSimulation();
+            stopBusMovement();
+        }
+        function handleEndTripCancel() {
+            state.showEndTripModal = false;
+            document.getElementById('endTripModal').classList.remove('open');
+        }
+
+        function handleLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                alert('Logout successful!');
+            }
+        }
+
+        // Simulation functions
+        let passengerInterval = null;
+        let durationInterval = null;
+        let busMovementInterval = null;
+
+        function startPassengerSimulation() {
+            passengerInterval = setInterval(() => {
+                const change = Math.random() > 0.5 ? 1 : -1;
+                state.passengerCount = Math.max(0, Math.min(40, state.passengerCount + change));
+                updatePassengerCount();
+                updateOccupancy();
+            }, 5000);
+        }
+
+        function stopPassengerSimulation() {
+            if (passengerInterval) {
+                clearInterval(passengerInterval);
+                passengerInterval = null;
+            }
+        }
+
+        function startDurationUpdates() {
+            durationInterval = setInterval(() => {
+                if (state.tripStatus === 'active') {
+                    updateTripDuration();
+                }
+            }, 1000);
+        }
+
+        function stopDurationUpdates() {
+            if (durationInterval) {
+                clearInterval(durationInterval);
+                durationInterval = null;
+            }
+        }
+
+        function startBusMovement() {
+            if (!mapInstance || !busMarker) return;
+
+            busMovementInterval = setInterval(() => {
+                if (state.routeIndex < routePath.length - 1) {
+                    state.routeIndex++;
+                    state.busPosition = routePath[state.routeIndex];
+                    busMarker.setLatLng(state.busPosition);
+                    mapInstance.setView(state.busPosition, 11);
+                }
+            }, 3000);
+        }
+
+        function stopBusMovement() {
+            if (busMovementInterval) {
+                clearInterval(busMovementInterval);
+                busMovementInterval = null;
+            }
+        }
+
+        // Map initialization
+        function initializeMap() {
+            if (state.mapInitialized) return;
+
+            const mapContainer = document.getElementById('map');
+            mapInstance = L.map(mapContainer).setView([15.3700, 120.9100], 11);
+
+            // Add tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(mapInstance);
+
+            // Draw route line
+            L.polyline(routePath, {
+                color: '#3b82f6',
+                weight: 4,
+                opacity: 0.7
+            }).addTo(mapInstance);
+
+            // Create SVG icons
+            const createIcon = (color, symbol) => {
+                return L.icon({
+                    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="${color}" stroke="white" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            ${symbol}
+                        </svg>
+                    `),
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16],
+                    popupAnchor: [0, -16]
+                });
+            };
+
+            // Add start marker
+            const startSymbol = '<path d="M12 6v6l4 2" stroke="white" stroke-width="2" fill="none"/>';
+            L.marker(routePath[0], { icon: createIcon('#10b981', startSymbol) })
+                .addTo(mapInstance)
+                .bindPopup('<b>Cabiao Station</b><br>Starting Point');
+
+            // Add end marker
+            const endSymbol = '<path d="M9 9l6 6M15 9l-6 6" stroke="white" stroke-width="2"/>';
+            L.marker(routePath[routePath.length - 1], { icon: createIcon('#ef4444', endSymbol) })
+                .addTo(mapInstance)
+                .bindPopup('<b>Cabanatuan Station</b><br>Destination');
+
+            // Add bus marker
+            const busIcon = L.icon({
+                iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="#22c55e" stroke="white" stroke-width="2">
+                        <rect x="3" y="6" width="18" height="13" rx="2" />
+                        <path d="M3 11h18" />
+                        <circle cx="8" cy="16" r="1" fill="white" />
+                        <circle cx="16" cy="16" r="1" fill="white" />
+                        <path d="M7 6V4" stroke="white" />
+                        <path d="M17 6V4" stroke="white" />
+                    </svg>
+                `),
+                iconSize: [40, 40],
+                iconAnchor: [20, 40],
+                popupAnchor: [0, -40]
+            });
+
+            busMarker = L.marker(state.busPosition, { icon: busIcon })
+                .addTo(mapInstance)
+                .bindPopup('<b>Your Bus</b><br>MB-2024');
+
+            state.mapInitialized = true;
+        }
+
+        // Event listeners
+        document.getElementById('startTripBtn').addEventListener('click', handleStartTrip);
+        document.getElementById('endTripBtn').addEventListener('click', handleEndTripClick);
+        document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+
+        // Modal event listeners
+        document.getElementById('modalClose').addEventListener('click', handleEndTripCancel);
+        document.getElementById('modalCancel').addEventListener('click', handleEndTripCancel);
+        document.getElementById('modalConfirm').addEventListener('click', handleEndTripConfirm);
+
+        // Close modal when clicking outside
+        document.getElementById('endTripModal').addEventListener('click', (e) => {
+            if (e.target.id === 'endTripModal') {
+                handleEndTripCancel();
+            }
+        });
+
+        // Initialize
+        function init() {
+            // Update current time immediately and every second
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+
+            // Start duration updates
+            startDurationUpdates();
+
+            // Initialize map
+            initializeMap();
+
+            // Update UI
+            updateStatus();
+            updateButtons();
+            updateTripCards();
+
+            console.log('Driver Dashboard initialized');
+        }
+
+        // Start the app when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+        
+    </script>
+</body>
+</html>

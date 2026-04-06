@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mini Bus Management</title>
+
+<link rel="stylesheet" href="/static/css/admin.css">
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- Chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+</head>
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+  <div class="logo">
+    🚌 <div>
+      <strong>Mini Bus Management</strong>
+      <p>Admin Control System</p>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button onclick="showPage('dashboard', this)" class="active">Dashboard</button>
+    <button onclick="showPage('live', this)">Live Location</button>
+    <button onclick="showPage('analytics', this)">Crowd Analytics</button>
+    <button id="cameraBtn" onclick="openCameraPanel()">Camera 🔴</button>
+<a href="{{ url_for('logout') }}" class="logout-btn" id="logoutBtn" onclick="return confirmLogout();">Logout 👤</a></div></div>
+
+<!-- CAMERA CONTROL MODAL -->
+<div id="cameraModal" class="camera-modal hidden">
+  <div class="camera-modal-content">
+    <div class="camera-modal-header">
+      <h3>Bus Camera Control</h3>
+      <button class="close-btn" onclick="closeCameraPanel()">✕</button>
+    </div>
+    
+    <div class="camera-modal-body">
+      <!-- BUS SELECTION -->
+      <div class="bus-selection">
+        <h4>Select a Bus</h4>
+        <div class="bus-list" id="busSelectionList">
+          <button class="bus-select-btn" onclick="selectBus(1, 'MB-01', 'Cabanatuan')">
+            <strong>MB-01</strong>
+            <p>Cabanatuan Route</p>
+          </button>
+          <button class="bus-select-btn" onclick="selectBus(2, 'MB-02', 'Cabiao')">
+            <strong>MB-02</strong>
+            <p>Cabiao Route</p>
+          </button>
+          <button class="bus-select-btn" onclick="selectBus(3, 'MB-03', 'Gapan')">
+            <strong>MB-03</strong>
+            <p>Gapan Route</p>
+          </button>
+        </div>
+      </div>
+
+      <div class="camera-main">
+        <!-- CAMERA FEED -->
+        <div class="camera-feed-container">
+          <div class="camera-feed" id="cameraFeed">
+            <div class="camera-screen" id="cameraScreen">Select a Bus</div>
+            <div class="camera-status on" id="cameraStatus">ON</div>
+          </div>
+        </div>
+
+        <!-- SELECTED BUS INFO -->
+        <div class="selected-bus-info">
+          <p>Selected Bus: <span id="selectedBusName">None</span></p>
+          <p>Route: <span id="selectedBusRoute">-</span></p>
+        </div>
+
+        <!-- CAMERA ACTIONS -->
+        <div class="camera-controls camera-actions">
+          <div class="control-group" style="display:flex; gap: 8px; flex-wrap:wrap;">
+            <button id="singleCameraBtn" class="control-btn" onclick="showSingleCamera()">Single Camera</button>
+            <button id="allCameraBtn" class="control-btn" onclick="viewAllCameras()">View All Cameras</button>
+            <button class="control-btn reset-btn" onclick="resetCamera()">🔄 Reset Camera</button>
+          </div>
+
+          <!-- ZOOM -->
+          <div class="control-group">
+            <p class="control-label">Zoom</p>
+            <div class="zoom-buttons">
+              <button class="control-btn" onclick="zoom('in')">+ Zoom In</button>
+              <button class="control-btn" onclick="zoom('out')">- Zoom Out</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ALL CAMERAS GRID -->
+        <div id="allCameraGrid" class="all-camera-grid hidden">
+          <div class="camera-tile">MB-01<br><small>Cabanatuan</small></div>
+          <div class="camera-tile">MB-02<br><small>Cabiao</small></div>
+          <div class="camera-tile">MB-03<br><small>Gapan</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="page">
+
+  <h2>Dashboard Overview</h2>
+  <p class="sub">Real-time monitoring of your minibus fleet</p>
+
+  <!-- CONDUCTOR STATUS WIDGET -->
+  <div class="conductor-widget">
+    <h3>Conductor Status</h3>
+    <p>Total logins: <strong>{{ conductor_usage.total_sessions }}</strong></p>
+    <p>Counting entries today: <strong>{{ conductor_usage.records_today }}</strong></p>
+    {% if conductor_usage.last_entry %}
+    <p>Last record: Students {{ conductor_usage.last_entry.students }}, PWD {{ conductor_usage.last_entry.pwd }}, Senior {{ conductor_usage.last_entry.senior }}, Regular {{ conductor_usage.last_entry.regular }} (Total {{ conductor_usage.last_entry.total }})</p>
+    {% else %}
+    <p><em>No conductor record yet.</em></p>
+    {% endif %}
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="card">
+      <p>Active Buses</p>
+      <h3>12 / 15</h3>
+      <span class="green">+2 from last week</span>
+    </div>
+
+    <div class="card">
+      <p>Current Passengers</p>
+      <h3>328</h3>
+      <span>Across all routes</span>
+    </div>
+
+    <div class="card">
+      <p>On-Time Performance</p>
+      <h3>94.2%</h3>
+      <span class="green">+3% improvement</span>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="grid">
+    <div class="panel">
+      <h4>Weekly Passenger Trends</h4>
+      <canvas id="lineChart"></canvas>
+    </div>
+
+    <div class="panel">
+      <h4>Hourly Occupancy Rate</h4>
+      <canvas id="barChart"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<!-- LIVE -->
+<div id="live" class="page hidden">
+
+  <h2>Live Location Tracking</h2>
+  <p class="sub">Real-time GPS tracking</p>
+
+  <div class="live-grid">
+
+    <!-- MAP -->
+    <div class="panel">
+      <h4>Interactive Map</h4>
+      <div id="map"></div>
+
+      <div class="bus-info">
+        <div>
+          <strong>Mini Bus 01</strong>
+          <p>Cabanatuan Route</p>
+        </div>
+        <span class="status online">online</span>
+      </div>
+    </div>
+
+    
+
+    <!-- FLEET -->
+    <div class="panel">
+      <h4>Fleet Status</h4>
+
+      <div class="fleet">
+        <div class="bus-card online" onclick="selectBusAndOpenCamera(1, 'MB-01', 'Cabanatuan')" style="cursor: pointer;">
+          <strong>MB-01</strong>
+          <p>45 km/h • 28/35</p>
+          <small style="color: #3b82f6;">Click to view camera →</small>
+        </div>
+
+        <div class="bus-card online" onclick="selectBusAndOpenCamera(2, 'MB-02', 'Cabiao')" style="cursor: pointer;">
+          <strong>MB-02</strong>
+          <p>52 km/h • 32/35</p>
+          <small style="color: #3b82f6;">Click to view camera →</small>
+        </div>
+
+        <div class="bus-card offline" onclick="selectBusAndOpenCamera(3, 'MB-03', 'Gapan')" style="cursor: pointer;">
+          <strong>MB-03</strong>
+          <p>Offline</p>
+          <small style="color: #3b82f6;">Click to view camera →</small>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- CROWD ANALYTICS -->
+<div id="analytics" class="page hidden">
+
+  <h2>Crowd Analytics</h2>
+  <p class="sub">Passenger insights and travel patterns</p>
+
+  <!-- KPI CARDS -->
+  <div class="stats">
+    <div class="card">
+      <p>Total Passengers Today</p>
+      <h3>1,284</h3>
+      <span class="green">+12% vs yesterday</span>
+    </div>
+
+    <div class="card">
+      <p>Peak Hour</p>
+      <h3>5:00 PM</h3>
+      <span>Highest demand</span>
+    </div>
+
+    <div class="card">
+      <p>Most Used Route</p>
+      <h3>Cabanatuan</h3>
+      <span>324 passengers</span>
+    </div>
+
+    <div class="card">
+      <p>Avg Trip Time</p>
+      <h3>32 mins</h3>
+      <span>Normal traffic</span>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="grid">
+    <div class="panel">
+      <h4>Passenger Flow (7 Days)</h4>
+      <canvas id="overviewChart"></canvas>
+    </div>
+
+    <div class="panel">
+      <h4>Peak Hour Demand</h4>
+      <canvas id="peakChart"></canvas>
+    </div>
+  </div>
+
+  <!-- DEMOGRAPHICS -->
+  <div class="grid">
+    <div class="panel">
+      <h4>Passenger Demographics</h4>
+      <canvas id="demoChart"></canvas>
+    </div>
+
+    <div class="panel">
+      <h4>Passenger Type</h4>
+      <canvas id="typeChart"></canvas>
+    </div>
+  </div>
+
+  <!-- DESTINATIONS + TABLE -->
+  <div class="grid">
+
+    <div class="panel">
+      <h4>Top Destinations</h4>
+      <canvas id="destinationChart"></canvas>
+    </div>
+
+    <div class="panel">
+      <h4>Route Performance</h4>
+
+      <table class="table">
+        <tr>
+          <th>Route</th>
+          <th>Passengers</th>
+          <th>Status</th>
+        </tr>
+
+        <tr>
+          <td>Cabanatuan</td>
+          <td>324</td>
+          <td class="good">High</td>
+        </tr>
+
+        <tr>
+          <td>Cabiao</td>
+          <td>280</td>
+          <td class="good">Stable</td>
+        </tr>
+
+        <tr>
+          <td>Gapan</td>
+          <td>210</td>
+          <td class="warn">Moderate</td>
+        </tr>
+
+        <tr>
+          <td>San Jose</td>
+          <td>150</td>
+          <td class="low">Low</td>
+        </tr>
+      </table>
+
+    </div>
+
+</div>
+
+<!-- CROWd ANALYTICS SUMMARY -->
+<div class="crowd-analytics-summary" style="margin-top: 20px; background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px;">
+  <h3 style="margin-bottom: 10px;">Crowd Analytics Insights</h3>
+  <p style="color:#4b5563;">A quick summary of current load, smart actions and performance goals based on passenger behavior and route trends.</p>
+
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 16px;">
+    <div style="background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; padding: 12px;">
+      <h4 style="margin:0 0 6px;">Passenger Pattern</h4>
+      <ul style="margin:0; padding-left:18px; color:#374151;">
+        <li>Peak 7-9 AM (78% capacity)</li>
+        <li>Evening rush 4-6 PM (75% capacity)</li>
+        <li>Off-peak 12-2 PM (35% capacity)</li>
+      </ul>
+    </div>
+    <div style="background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; padding: 12px;">
+      <h4 style="margin:0 0 6px;">Route Advice</h4>
+      <ul style="margin:0; padding-left:18px; color:#374151;">
+        <li>Redeploy additional buses for Cabanatuan.</li>
+        <li>Add express stop at high-demand points.</li>
+        <li>Monitor San Jose route; crowd is low and capacity available.</li>
+      </ul>
+    </div>
+    <div style="background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; padding: 12px;">
+      <h4 style="margin:0 0 6px;">Recommendations</h4>
+      <ol style="margin:0; padding-left:18px; color:#374151;">
+        <li>Run each fleet at +15% frequency in peak hours.</li>
+        <li>Enable in-app alerts for passengers on high-crowd routes.</li>
+        <li>Prepare dynamic scheduling updates in real time.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script src="/static/js/script.js"></script>
+</body>
+</html>
